@@ -1,94 +1,46 @@
 /*  Input parameters   */
 nextflow.enable.dsl = 2
-params.reads = "$baseDir/nano/*_R{1,2}.fastq.gz"
-params.outdir = "$baseDir/cleanup"
-params.minlen = 50
-params.minreads = 1000
-params.minqual = 0
-params.hostdb = false
-params.krakendb = false
-params.krakendb = false
-params.contaminants = false
-params.denovo = false
-        
+params.samplesheet = "metadata.tsv"
+params.outdir = "metaphage-lite"
+
+params.vibrantdb = "$baseDir/DB/vibrant-1.2.1"
 // prints to the screen and to the log
 log.info """
-         GMH Cleanup pipeline (version 1.3)
+         GMH MetaPhage Lite (version 1.0)
          ===================================
-         input reads  : ${params.reads}
+         samplesheet  : ${params.samplesheet}
          outdir       : ${params.outdir}
-         min reads    : ${params.minreads}
-         host db      : ${params.hostdb}
-         kraken db    : ${params.krakendb}
-         contaminants : ${params.contaminants}
-         denovo       : ${params.denovo}
+
+         vibrantdb    : ${params.vibrantdb}
          """
          .stripIndent()
 
+sampledata = Channel
+    .fromPath(params.samplesheet)
+    .splitCsv(header:true)
+    .map{ row -> tuple(row.Sample, file(row.R1), file(row.R2), file(row.Ctg) )  }
+ 
 /* 
    check reference path exists 
 */
 
-def hostPath = file(params.hostdb, checkIfExists: true)
-file("${params.hostdb}/hash.k2d", checkIfExists: true)
-
-def reportPath = file(params.krakendb, checkIfExists: true)
-file("${params.krakendb}/hash.k2d", checkIfExists: true)
-
-def contaminantsPath = false
-if (params.contaminants) {
-  contaminantsPath = file(params.contaminants, checkIfExists: true)
-}
+def vibrantPath = file(params.vibrantdb, checkIfExists: true)
+ file("${params.vibrantdb}/databases/Pfam-A_v32.HMM.h3m", checkIfExists: true)      //check valid path with a sample file
+ file("${params.vibrantdb}/files/VIBRANT_categories.tsv", checkIfExists: true)      //check valid path with a sample file
+ 
 
 /*    Modules  */
-include { KRAKEN2_HOST; KRAKEN2_REPORT; BRACKEN } from './modules/kraken'
-include { FASTP; MULTIQC; TRACKFILES; GETLEN; INDEX; REMOVE_CONTAMINANTS; REMOVE_MAPPED; MAP_CONTAMINANTS; 
-  MINREADS; MINREADS as MINREADS_FINALCHECK } from './modules/cleaner'
-include { DENOVO; PRODIGAL  } from './modules/denovo'
+include { STATS; MERGESTATS; MULTIQC } from './modules/utils'
+include { VIBRANT } from './modules/mining'
 
-reads = Channel
-        .fromFilePairs(params.reads, checkIfExists: true)
 
 
 workflow {
-  // Discard samples not passing the min reads filter
-  MINREADS(reads, params.minreads)
+  STATS(sampledata)
+  MERGESTATS(STATS.out.mqc.map{it -> it[1]}.collect())
 
-  // Host removal (Human reads)
-  KRAKEN2_HOST( MINREADS.out.reads, hostPath)
-
-  // If a FASTA contaminats is passed, filter the reads against it with BWA
-  if (params.contaminants == false) {
-    TOFILTER = KRAKEN2_HOST.out
-    CONTAMLOG = Channel.empty()
-  } else {
-    // INDEX(contaminantsPath)
-    // MAP_CONTAMINANTS( KRAKEN2_HOST.out.reads, INDEX.out )
-    // TOFILTER = CONTAMINANTS( MAP_CONTAMINANTS.out )
-    // CONTAMLOG = TOFILTER.contaminants
-    TOFILTER = REMOVE_CONTAMINANTS(KRAKEN2_HOST.out.reads, contaminantsPath )
-    CONTAMLOG = TOFILTER.stats
-  }
+  VIBRANT(sampledata, vibrantPath)
   
-  // Remove adapters
-  MINREADS_FINALCHECK(TOFILTER.reads, params.minreads)
-  FASTP(MINREADS_FINALCHECK.out.reads , params.minlen, params.minqual )
-
-  
-  // Kraken2 profiling
-  KRAKEN2_REPORT( FASTP.out.reads, reportPath )   
-  // Guess length for Bracken
-  GETLEN( TOFILTER.reads.map{it -> it[1]}.collect() )
-  BRACKEN( KRAKEN2_REPORT.out, GETLEN.out, reportPath) 
-
-  // Optional minimal denovo profiling
-  if (params.denovo == false) {
-    CONTIGS = Channel.empty()
-  } else {
-    CONTIGS = DENOVO( FASTP.out.reads )
-    PRODIGAL( CONTIGS )
-  }
-  // MultiQC
-  TRACKFILES(FASTP.out.json.mix( KRAKEN2_HOST.out.txt, CONTAMLOG ).collect() )
-  MULTIQC( FASTP.out.json.mix( KRAKEN2_REPORT.out, TRACKFILES.out ).collect() )
+  MULTIQC(MERGESTATS.out)
 }
+ 

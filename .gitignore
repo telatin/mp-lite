@@ -1,0 +1,6 @@
+nf-core-miniphage/
+work/
+data/
+DB
+.nextflow*
+metaphage-lite/
