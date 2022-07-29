@@ -1,0 +1,19 @@
+name: temp-utils
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - fastp=0.23.2=hb7a2d85_2
+  - isa-l=2.30.0=ha770c72_4
+  - libdeflate=1.10=h7f98852_0
+  - libgcc-ng=12.1.0=h8d9b700_16
+  - libgomp=12.1.0=h8d9b700_16
+  - libstdcxx-ng=12.1.0=ha89aaad_16
+  - libzlib=1.2.12=h166bdaf_2
+  - pcre=8.45=h9c3ff4c_0
+  - seqfu=1.14.0=hbd632db_0
+  - seqkit=2.2.0=h9ee0642_0
+prefix: /opt/miniconda3/envs/temp-utils

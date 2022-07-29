@@ -14,8 +14,13 @@ decompressed = None
 
 if args.input.endswith('.gz'):
     print("Decompressing {}".format(args.input), file=sys.stderr)
-    subprocess.call(['gunzip', args.input])
-    decompressed = args.input[:-3]
+    input_resolved_path = os.path.abspath(args.input)
+    try:
+        subprocess.call(['gunzip', input_resolved_path])
+        decompressed = args.input[:-3]
+    except subprocess.CalledProcessError as e:
+        print("Error decompressing {}: {}".format(args.input, e), file=sys.stderr)
+        sys.exit(1)
 else:
     print("Already decompressed {}".format(args.input), file=sys.stderr)
     decompressed = args.input
