@@ -39,19 +39,5 @@ include { STATS; MERGESTATS; MULTIQC } from './modules/utils'
 include { VIBRANT; VIRSORTER2; VIRFINDER; VIRFINDER_FASTA } from './modules/mining'
 
  
-
-workflow {
-  contigs = sampledata.map{ it -> [it[0], it[3]] }.view()
-
-  STATS(contigs)
-  MERGESTATS(STATS.out.mqc.map{it -> it[1]}.collect())
-
-  // Miners
-  VIBRANT(contigs, vibrantPath)
-  VIRSORTER2(contigs, virsorterPath)
-  VIRFINDER(contigs)
-  VIRFINDER_FASTA(contigs, VIRFINDER.out.map{it -> it[1]}.collect())
-  
- MULTIQC(MERGESTATS.out)
-}
- 
+// contigs
+contigs = sampledata.map{ it -> [it[0], it[3]] }.view()
