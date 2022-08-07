@@ -2,6 +2,20 @@
 
 Compact pipeline for phage mining in metagenomes
 
+```mermaid
+graph TD
+    A[Sample,Reads,Contigs] --> B1[VirFinder]
+    A[Sample,Reads,Contigs] --> B2[VirSorter 2]
+    A[Sample,Reads,Contigs] --> B3[Vibrant]
+    A[Sample,Reads,Contigs] --> B4[Phigaro]
+    B1 --> B1X[ToFasta]
+    B1X --> C[Dereplicate]
+    B2 --> C[Dereplicate]
+    B3 --> C[Dereplicate]
+    B4 --> C[Dereplicate]
+    A --> D[Mapping]
+    C --> D
+ ```
 
 ### Citation
 
